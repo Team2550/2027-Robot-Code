@@ -19,13 +19,13 @@ import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.generated.TunerConstants;
 import frc.robot.DashBoard;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
-import frc.robot.subsystems.Vision;
-import frc.robot.subsystems.PathPlanner;
+import frc.robot.subsystems.vision.Vision;
+import frc.robot.subsystems.pathplanner.PathPlanner;
 
 public class RobotContainer {
   private CommandSwerveDrivetrain m_Drivetrain = TunerConstants.createDrivetrain();
   private DashBoard m_DashBoard = new DashBoard(m_Drivetrain);
-  private Vision m_Vision = new Vision();
+  private Vision m_Vision = new Vision(m_Drivetrain);
   private PathPlanner m_PathPlanner = new PathPlanner();
   private double MaxSpeed = 1 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top
                                                                                     // speed
