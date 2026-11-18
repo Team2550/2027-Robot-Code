@@ -12,9 +12,10 @@ public class DashBoard extends SubsystemBase {
   private final Field2d field = new Field2d();
   private final CommandSwerveDrivetrain drivetrain;
 
-  private DashBoard(CommandSwerveDrivetrain drivetrain) {
+  public DashBoard(CommandSwerveDrivetrain drivetrain) {
     this.drivetrain = drivetrain;
     SmartDashboard.putData("Field", field);
+    System.out.println("DashBoard2");
   }
 
   @Override

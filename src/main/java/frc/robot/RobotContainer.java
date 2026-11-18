@@ -16,11 +16,17 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-
 import frc.robot.generated.TunerConstants;
+import frc.robot.DashBoard;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
+import frc.robot.subsystems.Vision;
+import frc.robot.subsystems.PathPlanner;
 
 public class RobotContainer {
+  private CommandSwerveDrivetrain m_Drivetrain = TunerConstants.createDrivetrain();
+  private DashBoard m_DashBoard = new DashBoard(m_Drivetrain);
+  private Vision m_Vision = new Vision();
+  private PathPlanner m_PathPlanner = new PathPlanner();
   private double MaxSpeed = 1 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top
                                                                                     // speed
   private double MaxAngularRate = RotationsPerSecond.of(3 / 4).in(RadiansPerSecond); // 3/4 of a rotation per
