@@ -23,9 +23,9 @@ import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.pathplanner.PathPlanner;
 
 public class RobotContainer {
-  private CommandSwerveDrivetrain m_Drivetrain = TunerConstants.createDrivetrain();
-  private DashBoard m_DashBoard = new DashBoard(m_Drivetrain);
-  private Vision m_Vision = new Vision(m_Drivetrain);
+  public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+  private DashBoard m_DashBoard = new DashBoard(drivetrain);
+  private Vision m_Vision = new Vision(drivetrain);
   private PathPlanner m_PathPlanner = new PathPlanner();
   private double MaxSpeed = 1 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top
                                                                                     // speed
@@ -43,8 +43,6 @@ public class RobotContainer {
   private final Telemetry logger = new Telemetry(MaxSpeed);
 
   private final CommandXboxController joystick = new CommandXboxController(0);
-
-  public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
   public RobotContainer() {
     configureBindings();

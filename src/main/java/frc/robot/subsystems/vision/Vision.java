@@ -24,7 +24,6 @@ public class Vision extends SubsystemBase {
       VisionConstants.kRobotToCamFront);
   PhotonPoseEstimator photonEstimator1 = new PhotonPoseEstimator(FieldConstants.kTagLayout,
       VisionConstants.kRobotToCamLeft);
-  private Matrix<N3, N1> curStdDevs;
   Matrix<N3, N1> kSingleTagStdDevs = VisionConstants.kSingleTagStdDevs;
   Matrix<N3, N1> kMultiTagStdDevs = VisionConstants.kMultiTagStdDevs;
   private final Alert camera0Alert = new Alert("Camera 0 is not connected", AlertType.kWarning);
@@ -39,82 +38,70 @@ public class Vision extends SubsystemBase {
   public void periodic() {
     camera0Alert.set(!Camera0.isConnected());
     camera1Alert.set(!Camera1.isConnected());
-    getCameraData();
+
+    // Process both cameras independently
+    processCamera(Camera0, photonEstimator0);
+    processCamera(Camera1, photonEstimator1);
   }
 
-  void getCameraData() {
-    PhotonCamera cameraName = (Camera0.getLatestResult().getTargets().size() > Camera1.getLatestResult().getTargets()
-        .size()) ? Camera0 : Camera1;
-    PhotonPoseEstimator photonEstimator = (cameraName == Camera0) ? photonEstimator0 : photonEstimator1;
-
-    Optional<EstimatedRobotPose> visionEst = Optional.empty();
-    for (var result : cameraName.getAllUnreadResults()) {
-      visionEst = photonEstimator.estimateCoprocMultiTagPose(result);
+  private void processCamera(PhotonCamera camera, PhotonPoseEstimator estimator) {
+    for (var result : camera.getAllUnreadResults()) {
+      Optional<EstimatedRobotPose> visionEst = estimator.estimateCoprocMultiTagPose(result);
       if (visionEst.isEmpty()) {
-        visionEst = photonEstimator.estimateLowestAmbiguityPose(result);
+        visionEst = estimator.estimateLowestAmbiguityPose(result);
       }
-      updateEstimationStdDevs(visionEst, result.getTargets(), photonEstimator);
+
+      // Calculate std devs specifically for this result/camera
+      Matrix<N3, N1> estStdDevs = calculateEstimationStdDevs(visionEst, result.getTargets(), estimator);
 
       visionEst.ifPresent(
           est -> {
-            // Change our trust in the measurement based on the tags we can see
-            var estStdDevs = getEstimationStdDevs();
             Pose2d pose = est.estimatedPose.toPose2d();
-            Double timestamp = est.timestampSeconds;
+            double timestamp = est.timestampSeconds;
             drivetrain.addVisionMeasurement(pose, timestamp, estStdDevs);
           });
     }
-
   }
 
-  private void updateEstimationStdDevs(
+  private Matrix<N3, N1> calculateEstimationStdDevs(
       Optional<EstimatedRobotPose> estimatedPose, List<PhotonTrackedTarget> targets,
       PhotonPoseEstimator photonEstimator) {
     if (estimatedPose.isEmpty()) {
-      // No pose input. Default to single-tag std devs
-      curStdDevs = kSingleTagStdDevs;
-
-    } else {
-      // Pose present. Start running Heuristic
-      var estStdDevs = kSingleTagStdDevs;
-      int numTags = 0;
-      double avgDist = 0;
-
-      // Precalculation - see how many tags we found, and calculate an
-      // average-distance metric
-      for (var tgt : targets) {
-        var tagPose = photonEstimator.getFieldTags().getTagPose(tgt.getFiducialId());
-        if (tagPose.isEmpty())
-          continue;
-        numTags++;
-        avgDist += tagPose
-            .get()
-            .toPose2d()
-            .getTranslation()
-            .getDistance(estimatedPose.get().estimatedPose.toPose2d().getTranslation());
-      }
-
-      if (numTags == 0) {
-        // No tags visible. Default to single-tag std devs
-        curStdDevs = kSingleTagStdDevs;
-      } else {
-        // One or more tags visible, run the full heuristic.
-        avgDist /= numTags;
-        // Decrease std devs if multiple targets are visible
-        if (numTags > 1)
-          estStdDevs = kMultiTagStdDevs;
-        // Increase std devs based on (average) distance
-        if (numTags == 1 && avgDist > 4)
-          estStdDevs = VecBuilder.fill(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
-        else
-          estStdDevs = estStdDevs.times(1 + (avgDist * avgDist / 30));
-        curStdDevs = estStdDevs;
-      }
+      return kSingleTagStdDevs;
     }
-  }
 
-  public Matrix<N3, N1> getEstimationStdDevs() {
-    return curStdDevs;
+    var estStdDevs = kSingleTagStdDevs;
+    int numTags = 0;
+    double avgDist = 0;
+
+    for (var tgt : targets) {
+      var tagPose = photonEstimator.getFieldTags().getTagPose(tgt.getFiducialId());
+      if (tagPose.isEmpty())
+        continue;
+      numTags++;
+      avgDist += tagPose
+          .get()
+          .toPose2d()
+          .getTranslation()
+          .getDistance(estimatedPose.get().estimatedPose.toPose2d().getTranslation());
+    }
+
+    if (numTags == 0) {
+      return kSingleTagStdDevs;
+    }
+
+    avgDist /= numTags;
+    if (numTags > 1) {
+      estStdDevs = kMultiTagStdDevs;
+    }
+
+    if (numTags == 1 && avgDist > 4) {
+      return VecBuilder.fill(Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE);
+    } else {
+      estStdDevs = estStdDevs.times(1 + (avgDist * avgDist / 30));
+    }
+
+    return estStdDevs;
   }
 
 }
